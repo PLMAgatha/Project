@@ -215,8 +215,104 @@
       :limit.sync="queryParams.pageSize"
       @pagination="getList"
     />
+    <el-dialog
+      :title="dialogTitle"
+      id="achieve_dialog-seven"
+      append-to-body
+      :visible.sync="dialogFormVisible"
+    >
+      <el-form
+        class="popup-one"
+        ref="form"
+        :rules="rules"
+        :model="form"
+        @submit.native.prevent
+      >
+        <el-form-item label="图号:" prop="imageCode">
+          <el-input v-model="form.imageCode" @keyup.native="keyUp"></el-input>
+        </el-form-item>
+        <el-form-item label="产线:" prop="plName">
+          <el-input v-model="form.plName" @keyup.native="keyUp"></el-input>
+        </el-form-item>
+        <el-form-item label="单根工时（分）:" prop="workingHour">
+          <el-input-number
+            :precision="1"
+            v-model="form.workingHour"
+            @keyup.native="keyUp"
+            controls-position="right"
+            @change="handleChange"
+            :min="0.1"
+            :max="60"
+            style="width: 375px"
+          ></el-input-number>
+        </el-form-item>
+        <el-form-item
+          label="单次AGV备料运输量"
+          prop="agvTransVolume"
+
+        >
+          <el-input
+            v-model.number="form.agvTransVolume"
+            autocomplete="off"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="备料提前时间（分）:" prop="preparationLeadTime">
+          <el-input
+            v-model.number="form.preparationLeadTime"
+            @keyup.native="keyUp"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="起点站点:" prop="startStationId">
+          <el-select
+            v-model="form.startStationId"
+            filterable
+            placeholder="请选择起点站点"
+            clearable
+            style="width: 240px"
+          >
+            <el-option
+              v-for="item in startdata"
+              :key="item.value"
+              :label="item.agvCode"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="终点站点:" prop="endStationId">
+          <el-select
+            v-model="form.endStationId"
+            filterable
+            placeholder="请选择终点站点"
+            clearable
+            style="width: 240px"
+          >
+            <el-option
+              v-for="item in positiontype"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注" prop="mark">
+          <el-col :span="10" class="dialog-list-width">
+            <el-input
+              type="textarea"
+              :rows="3"
+              v-model="form.mark"
+              placeholder="请输入备注"
+            />
+          </el-col>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button class="function-two" @click="cancel">取 消</el-button>
+        <el-button class="function-two" type="primary" @click="submitForm"
+        >确定
+        </el-button>
+      </div>
+    </el-dialog>
     <uploadExcel ref="tochannel" :title="tochanneldata.title" @refresh="refresh"></uploadExcel>
-    <ChangeDialog ref="ChangeDialog" />
   </div>
 </template>
 
@@ -233,15 +329,11 @@ import {
   getExcel,
   downloadPreExcel,
 } from "@/api/BasicConfiguration/preparation";
-import {listData} from "@/api/system/dict/data";
+import { listData } from "@/api/system/dict/data";
 import uploadExcel from "@/views/BasicConfiguration/MaterialPreparation/uploadExcel.vue";
-import ChangeDialog from "@/views/BasicConfiguration/MaterialPreparation/changegDialog.vue"
 
 export default {
-  components: {
-    "uploadExcel": uploadExcel,
-    "ChangeDialog": ChangeDialog
-  },
+  components: {"uploadExcel":uploadExcel },
   data() {
     var validatePass = (rule, value, callback) => {
       if (value && value < 0 && Number.isInteger(value) || (value && value !== "" && typeof value !== 'number')) {
@@ -291,6 +383,37 @@ export default {
         title: ""
       },
       form: {},
+      rules: {
+        imageCode: [{ required: true, message: "请输入图号", trigger: "blur" }],
+        plName: [{ required: true, message: "请输入产线", trigger: "blur" }],
+        workingHour: [
+          {
+            required: true,
+            message: "请选择单根工时（分）",
+            trigger: "blur",
+          },
+        ],
+        agvTransVolume: [
+          { required: true, message: '单次AGV备料运输量不能为空' },
+          { type: 'number', message: '单次AGV备料运输量必须为数字值' },
+          {
+            validator: validatePassAgv,
+            trigger: "blur",
+          }
+        ],
+        preparationLeadTime: [
+          {
+            validator: validatePass,
+            trigger: "blur",
+          },
+        ],
+        startStationId: [
+          { required: true, message: "请选择起点站点", trigger: "change" },
+        ],
+        endStationId: [
+          { required: true, message: "请选择终点站点", trigger: "change" },
+        ],
+      },
       // 任务的状态
       positiontype: [],
     };
@@ -313,8 +436,7 @@ export default {
             this.positiontype = res.data.list;
           }
         })
-        .catch(() => {
-        });
+        .catch(() => {});
     },
     // 多选
     handleSelectionChange(val) {
@@ -340,6 +462,8 @@ export default {
       this.loading = true;
       getPreparationList(this.queryParams).then((response) => {
         const newList = response.data.list.map(item => {
+          // item.workingHour = item.workingHour;
+          // console.log(item.workingHour,'test')
           return item;
         })
         this.stationList = newList;
@@ -348,14 +472,22 @@ export default {
         this.loading = false;
       });
     },
+    /** 获取起点站点 */
+    getStarStation() {
+      getPreparationStartStation(this.starStation).then((response) => {
+        this.startdata = response.data;
+      });
+    },
     // 新增
     openDialog() {
-      this.$refs.ChangeDialog.show = true
-    },
-
-    // 编辑
-    handleEdit(row) {
-      this.$refs.ChangeDialog.show = true
+      this.reset();
+      this.getStarStation();
+      this.dialogFormVisible = true;
+      this.dialogTitle = "新增";
+      // 新增
+      pagePreparation().then((res) => {
+        this.position = res.data.list;
+      });
     },
     // 表单重置
     reset() {
@@ -386,9 +518,17 @@ export default {
             this.getList();
             this.$modal.msgSuccess("删除成功");
           })
-          .catch(() => {
-          });
+          .catch(() => {});
       }
+    },
+    // 编辑
+    handleEdit(index, row) {
+      this.getStarStation();
+      row.endStationId = String(row.endStationId);
+      const data = _.cloneDeep(row);
+      this.dialogFormVisible = true;
+      this.form = data;
+      this.dialogTitle = "编辑";
     },
     // 导入
     handleimport() {
@@ -434,8 +574,7 @@ export default {
             this.$download.excel(response, "备料图号配置.xls");
             this.exportLoading = false;
           })
-          .catch(() => {
-          });
+          .catch(() => {});
       } else {
         const ids = this.multipleSelection.map((item) => {
           return item.id;
@@ -450,9 +589,46 @@ export default {
             this.$download.excel(response, "备料图号配置.xls");
             this.exportLoading = false;
           })
-          .catch(() => {
-          });
+          .catch(() => {});
       }
+    },
+    /** 提交按钮 */
+    submitForm() {
+      this.$refs["form"].validate((valid) => {
+        if (valid) {
+          const params = _.cloneDeep(this.form);
+          // params.workingHour = Math.ceil(this.form.workingHour) * 60;
+          params.workingHour = this.form.workingHour;
+          //编辑
+          if (params.id !== undefined) {
+            updatePreparation(params)
+              .then((response) => {
+                this.form.preparationLeadTime = parseInt(params.preparationLeadTime);
+                this.form.startStationId = parseInt(params.startStationId);
+                this.$modal.msgSuccess("修改成功");
+                this.dialogFormVisible = false;
+                this.getList();
+              })
+              .catch(() => {});
+          } else {
+            //新增
+            params.agvTransVolume = parseInt(params.agvTransVolume);
+            // params.preparationLeadTime = params.preparationLeadTime != '' && parseInt(params.preparationLeadTime);
+            if (params.preparationLeadTime != "") {
+              params.preparationLeadTime = parseInt(params.preparationLeadTime);
+            }
+            params.startStationId = parseInt(params.startStationId);
+            params.endStationId = parseInt(params.endStationId);
+            addPreparation(params)
+              .then((response) => {
+                this.$modal.msgSuccess("新增成功");
+                this.dialogFormVisible = false;
+                this.getList();
+              })
+              .catch(() => {});
+          }
+        }
+      });
     },
   },
 };

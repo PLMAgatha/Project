@@ -55,21 +55,12 @@
     </el-form>
     <div class="add-btn">
       <el-button
-        type="warning"
+        type="primary"
         icon="el-icon-plus"
         size="small"
         @click="openDialog"
         >新增</el-button
       >
-      <el-button
-        type="danger"
-        size="small"
-        icon="el-icon-delete"
-        filterable
-        id="btns-style"
-        @click="handledelTimeNodeList()"
-        >删除
-      </el-button>
       <el-button
         type="primary"
         size="small"
@@ -79,7 +70,7 @@
         >导入
       </el-button>
       <el-button
-        type="warning"
+        type="primary"
         size="small"
         icon="el-icon-download"
         filterable
@@ -87,6 +78,15 @@
         @click="handleExcel"
       >
         导出
+      </el-button>
+      <el-button
+        type="danger"
+        size="small"
+        icon="el-icon-delete"
+        filterable
+        id="btns-style"
+        @click="handledelTimeNodeList()"
+      >删除
       </el-button>
       <right-toolbar
         :showSearch.sync="showSearch"
@@ -592,8 +592,10 @@ export default {
       this.$refs["form"].validate((valid) => {
         if (valid) {
           const params = _.cloneDeep(this.form);
+          console.log(params,'params下线')
           params.workingHour = this.form.workingHour;
           // this.form.workingHour = Math.ceil(this.form.workingHour) * 60;
+          console.log(this.form.id,'this.form.id下线')
           if (this.form.id !== undefined) {
             updatePreparation(params)
               .then((response) => {

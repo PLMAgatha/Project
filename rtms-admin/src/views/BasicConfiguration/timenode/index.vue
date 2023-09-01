@@ -56,7 +56,7 @@
     </el-form>
     <div class="add-btn">
       <el-button
-        type="warning"
+        type="primary"
         icon="el-icon-plus"
         size="small"
         @click="openDialog"
